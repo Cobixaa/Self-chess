@@ -84,13 +84,29 @@ bool Board::is_square_attacked(int sq, bool by_white) const {
 	// Knights
 	static const int KOFF[8][2]={{2,1},{1,2},{-1,2},{-2,1},{-2,-1},{-1,-2},{1,-2},{2,-1}};
 	for (auto &o:KOFF){int rr=r+o[0], ff=f+o[1]; if(rr>=0&&rr<8&&ff>=0&&ff<8){Piece p=squares[idx(rr,ff)]; if(p==(by_white?WN:BN)) return true;}}
-	// Bishops/Queens
-	if (slide(*this, sq, 1,1, by_white) || slide(*this, sq, 1,-1, by_white) || slide(*this, sq, -1,1, by_white) || slide(*this, sq, -1,-1, by_white)) {
-		return true;
+	// Diagonals (bishops/queens)
+	for (auto dir : std::array<std::pair<int,int>,4>{{std::make_pair(1,1),{1,-1},{-1,1},{-1,-1}}}) {
+		int rr=r+dir.first, ff=f+dir.second;
+		while (rr>=0&&rr<8&&ff>=0&&ff<8) {
+			Piece p = squares[idx(rr,ff)];
+			if (!is_empty(p)) {
+				if (is_white(p)==by_white && (abs_piece(p)==3 || abs_piece(p)==5)) return true;
+				break;
+			}
+			rr+=dir.first; ff+=dir.second;
+		}
 	}
-	// Rooks/Queens
-	if (slide(*this, sq, 1,0, by_white) || slide(*this, sq, -1,0, by_white) || slide(*this, sq, 0,1, by_white) || slide(*this, sq, 0,-1, by_white)) {
-		return true;
+	// Orthogonals (rooks/queens)
+	for (auto dir : std::array<std::pair<int,int>,4>{{std::make_pair(1,0),{-1,0},{0,1},{0,-1}}}) {
+		int rr=r+dir.first, ff=f+dir.second;
+		while (rr>=0&&rr<8&&ff>=0&&ff<8) {
+			Piece p = squares[idx(rr,ff)];
+			if (!is_empty(p)) {
+				if (is_white(p)==by_white && (abs_piece(p)==4 || abs_piece(p)==5)) return true;
+				break;
+			}
+			rr+=dir.first; ff+=dir.second;
+		}
 	}
 	// Kings
 	for (int dr=-1; dr<=1; ++dr) for (int df=-1; df<=1; ++df) if (dr||df) {
@@ -344,4 +360,3 @@ int Board::material_eval() const {
 	}
 	return s;
 }
-
