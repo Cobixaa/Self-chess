@@ -27,6 +27,8 @@ int main(int argc, char** argv) {
 	Board b = Board::startpos();
 	MCTS mcts;
 	mcts.enable_persistent_q(true);
+	const std::string qfile = "data/qtable.txt";
+	mcts.load_qtable(qfile);
 	std::cout << "Type: play, train, or quit\n";
 	std::string cmd;
 	while (std::cin>>cmd) {
@@ -60,6 +62,6 @@ int main(int argc, char** argv) {
 		}
 		std::cout<<"Type: play, train, or quit\n";
 	}
+	mcts.save_qtable(qfile);
 	return 0;
 }
-

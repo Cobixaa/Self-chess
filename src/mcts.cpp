@@ -20,7 +20,7 @@ void MCTS::save_qtable(const std::string &path) {
 }
 
 static inline float ucb_score(uint32_t parent_visits, uint32_t child_visits, float child_value, float c_puct) {
-	if (child_visits == 0) return std::numeric_limits<float>::infinity();
+	if (child_visits == 0) return 1e9f; // avoid inf under -ffast-math
 	float q = child_value / (float)child_visits;
 	float u = c_puct * std::sqrt(std::max(1u, parent_visits)) / (1.0f + child_visits);
 	return q + u;
@@ -62,6 +62,23 @@ float MCTS::simulate(Board &b) {
 			nd.moves = b.generate_legal_moves();
 			nd.child_visits.assign(nd.moves.size(), 0);
 			nd.child_values.assign(nd.moves.size(), 0.0f);
+			// seed from persistent q if enabled
+			if (persistent_q) {
+				auto itq = qtable.find(k.hash);
+				if (itq != qtable.end()) {
+					nd.value_sum = itq->second.first;
+					nd.visits = itq->second.second;
+				}
+				for (size_t i=0;i<nd.moves.size();++i) {
+					Board nb = b; Piece cap; uint8_t oc; int8_t oe; uint16_t oh; nb.make_move(nd.moves[i], cap, oc, oe, oh);
+					auto cq = qtable.find(nb.hash);
+					if (cq != qtable.end()) {
+						nd.child_values[i] = cq->second.first;
+						nd.child_visits[i] = cq->second.second;
+					}
+					nb.unmake_move(nd.moves[i], cap, oc, oe, oh);
+				}
+			}
 			table.emplace(k, nd);
 			float v = playout(b);
 			// backprop
@@ -72,6 +89,11 @@ float MCTS::simulate(Board &b) {
 				if (it->second != (size_t)-1) {
 					n.child_visits[it->second]++;
 					n.child_values[it->second] += v;
+				}
+				if (persistent_q) {
+					auto &q = qtable[it->first.hash];
+					q.first += v; // sum
+					q.second += 1; // visits
 				}
 				v = -v; // switch perspective
 			}
@@ -89,6 +111,11 @@ float MCTS::simulate(Board &b) {
 				if (it->second != (size_t)-1) {
 					n.child_visits[it->second]++;
 					n.child_values[it->second] += v;
+				}
+				if (persistent_q) {
+					auto &q = qtable[it->first.hash];
+					q.first += v;
+					q.second += 1;
 				}
 				v = -v;
 			}
