@@ -69,15 +69,7 @@ float MCTS::simulate(Board &b) {
 					nd.value_sum = itq->second.first;
 					nd.visits = itq->second.second;
 				}
-				for (size_t i=0;i<nd.moves.size();++i) {
-					Board nb = b; Piece cap; uint8_t oc; int8_t oe; uint16_t oh; nb.make_move(nd.moves[i], cap, oc, oe, oh);
-					auto cq = qtable.find(nb.hash);
-					if (cq != qtable.end()) {
-						nd.child_values[i] = cq->second.first;
-						nd.child_visits[i] = cq->second.second;
-					}
-					nb.unmake_move(nd.moves[i], cap, oc, oe, oh);
-				}
+				// intentionally skip per-child seeding for speed
 			}
 			table.emplace(k, nd);
 			float v = playout(b);
@@ -126,12 +118,8 @@ float MCTS::simulate(Board &b) {
 		float best = -1e9f; size_t best_i = 0;
 		for (size_t i=0;i<node.moves.size();++i) {
 			float sv = ucb_score(parent_vis, node.child_visits[i], node.child_values[i], 1.2f);
-			// small heuristic prior to bias rollout: material eval
 			if (node.child_visits[i] == 0) {
-				Board nb = b; Piece cap; uint8_t oc; int8_t oe; uint16_t oh; nb.make_move(node.moves[i], cap, oc, oe, oh);
-				int me = nb.material_eval() * (nb.white_to_move ? -1 : 1);
-				sv += 0.002f * (float)me;
-				nb.unmake_move(node.moves[i], cap, oc, oe, oh);
+				sv += 0.001f * (float)GLOBAL_RNG.uniform01();
 			}
 			if (sv > best) { best = sv; best_i = i; }
 		}
@@ -143,7 +131,7 @@ float MCTS::simulate(Board &b) {
 
 float MCTS::playout(Board &b) {
 	// Light playout with epsilon-greedy on material and random noise
-	for (int depth=0; depth<512; ++depth) {
+	for (int depth=0; depth<192; ++depth) {
 		GameResult g = b.evaluate_terminal();
 		if (g.terminal) return g.reward;
 		auto moves = b.generate_legal_moves();
@@ -164,4 +152,3 @@ float MCTS::playout(Board &b) {
 	}
 	return 0.0f;
 }
-
