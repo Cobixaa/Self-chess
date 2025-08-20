@@ -93,7 +93,7 @@ bool Board::is_square_attacked(int sq, bool by_white) const {
 				if (is_white(p)==by_white && (abs_piece(p)==3 || abs_piece(p)==5)) return true;
 				break;
 			}
-			rr+=dir.first; ff+=dir.second;
+			r+=dir.first; ff+=dir.second;
 		}
 	}
 	// Orthogonals (rooks/queens)
@@ -105,7 +105,7 @@ bool Board::is_square_attacked(int sq, bool by_white) const {
 				if (is_white(p)==by_white && (abs_piece(p)==4 || abs_piece(p)==5)) return true;
 				break;
 			}
-			rr+=dir.first; ff+=dir.second;
+			r+=dir.first; ff+=dir.second;
 		}
 	}
 	// Kings
@@ -174,6 +174,7 @@ std::vector<Move> Board::generate_legal_moves() const {
 						}
 					}
 				}
+				}
 				break;
 			case 2: { // Knight
 				static const int KOFF[8][2]={{2,1},{1,2},{-1,2},{-2,1},{-2,-1},{-1,-2},{1,-2},{2,-1}};
@@ -237,7 +238,7 @@ void Board::make_move(const Move &m, Piece &captured_out, uint8_t &old_castle, i
 	// hash out
 	if (moving != EMPTY) hash ^= ZOBRIST.piece_square[PIECE_INDEX[moving+6]][m.from];
 	if (captured != EMPTY) hash ^= ZOBRIST.piece_square[PIECE_INDEX[captured+6]][m.to];
-	if (!white_to_move) hash ^= ZOBRIST.black_to_move; else hash ^= ZOBRIST.black_to_move; // toggle later anyway
+	// side-to-move toggled once at end
 	hash ^= ZOBRIST.castling[castling_rights & 15];
 	if (ep_square >= 0) hash ^= ZOBRIST.ep_file[file_of(ep_square)];
 
@@ -298,7 +299,8 @@ void Board::make_move(const Move &m, Piece &captured_out, uint8_t &old_castle, i
 	if (squares[m.to] != EMPTY) hash ^= ZOBRIST.piece_square[PIECE_INDEX[squares[m.to]+6]][m.to];
 	hash ^= ZOBRIST.castling[castling_rights & 15];
 	if (ep_square >= 0) hash ^= ZOBRIST.ep_file[file_of(ep_square)];
-	if (!white_to_move) hash ^= ZOBRIST.black_to_move; else hash ^= ZOBRIST.black_to_move; // already toggled above
+	// toggle side-to-move exactly once
+	hash ^= ZOBRIST.black_to_move;
 }
 
 void Board::unmake_move(const Move &m, Piece captured, uint8_t old_castle, int8_t old_ep, uint16_t old_half) {
